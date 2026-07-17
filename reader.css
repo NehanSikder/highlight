@@ -3,11 +3,10 @@
 :root {
   --bg: #14120f;
   --ink: #e8e2d6;
-  --dim: 0.55;           /* focus dimming — adjustable with the "d" key */
-  --near: 0.75;
   --accent: #c9a86a;
   --muted: #8f877a;
   --border: #4a453c;
+  --current-bg: #2a2620;  /* subtle band behind the current line */
   --marker-y: 38vh;      /* fixed vertical home of the current line */
   --measure: 66ch;
   --line-height: 2.1rem; /* keep in sync with LINE_HEIGHT probe in app.js */
@@ -17,10 +16,9 @@
   :root {
     --bg: #f9f5ec;
     --ink: #211c15;
-    --dim: 0.6;
-    --near: 0.8;
     --muted: #6f6759;
     --border: #d4ccbc;
+    --current-bg: #efe6d2;
   }
 }
 
@@ -130,14 +128,12 @@ html, body {
   height: var(--line-height);
   line-height: var(--line-height);
   font-size: 1.25rem;
-  opacity: var(--dim);
   white-space: pre-wrap;
 }
 
-.line.near { opacity: var(--near); }
-
 .line.current {
-  opacity: 1;
+  background: var(--current-bg);
+  border-radius: 4px;
 }
 
 .line.current::before {

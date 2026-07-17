@@ -353,9 +353,7 @@ function renderLines(force) {
     `translate(-50%, ${markerY - line * lineHeight}px)`;
 
   for (const el of text.children) {
-    const i = Number(el.dataset.i);
-    el.classList.toggle("current", i === line);
-    el.classList.toggle("near", Math.abs(i - line) === 1);
+    el.classList.toggle("current", Number(el.dataset.i) === line);
   }
 
   $("progress").textContent =
@@ -382,26 +380,6 @@ function move(delta) {
   renderLines(false);
 }
 
-// ---------- focus dimming (d key) ----------
-
-const DIM_PRESETS = [
-  { name: "soft focus", dim: null, near: null },      // CSS defaults
-  { name: "strong focus", dim: "0.35", near: "0.6" },
-  { name: "no dimming", dim: "1", near: "1" },
-];
-
-function applyDim(idx) {
-  const p = DIM_PRESETS[idx % DIM_PRESETS.length];
-  const root = document.documentElement.style;
-  if (p.dim === null) { root.removeProperty("--dim"); root.removeProperty("--near"); }
-  else { root.setProperty("--dim", p.dim); root.setProperty("--near", p.near); }
-  localStorage.setItem("rw-dim", String(idx % DIM_PRESETS.length));
-  return p.name;
-}
-
-let dimIdx = Number(localStorage.getItem("rw-dim") || 0);
-applyDim(dimIdx);
-
 // ---------- input ----------
 
 document.addEventListener("keydown", (e) => {
@@ -413,8 +391,6 @@ document.addEventListener("keydown", (e) => {
     case "PageDown": case " ": move(10); break;
     case "PageUp": move(-10); break;
     case "Escape": case "b": showLibrary(); return;
-    case "d": dimIdx = (dimIdx + 1) % DIM_PRESETS.length;
-              status("Dimming: " + applyDim(dimIdx)); break;
     default: return;
   }
   e.preventDefault();
