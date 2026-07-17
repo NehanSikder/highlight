@@ -1,0 +1,163 @@
+/* Readwhile — calm, one bright line at a time. */
+
+:root {
+  --bg: #14120f;
+  --ink: #e8e2d6;
+  --dim: 0.28;
+  --near: 0.45;
+  --accent: #c9a86a;
+  --muted: #7d766a;
+  --marker-y: 38vh;      /* fixed vertical home of the current line */
+  --measure: 66ch;
+  --line-height: 2.1rem; /* keep in sync with LINE_HEIGHT probe in app.js */
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f1e7;
+    --ink: #2b2620;
+    --muted: #8a8272;
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Charter, Georgia, "Iowan Old Style", serif;
+  overflow: hidden;
+}
+
+.screen { height: 100vh; }
+
+/* ---------- library ---------- */
+
+#library {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 14vh 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+}
+
+.lib-head h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.tagline { color: var(--muted); margin-top: 0.5rem; }
+
+#book-list { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+
+#book-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#book-list li:hover { border-color: var(--accent); }
+
+#book-list .title { flex: 1; font-size: 1.1rem; }
+#book-list .pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+#book-list .del {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 1rem; font-family: inherit;
+}
+#book-list .del:hover { color: var(--accent); }
+
+.empty, .hint { color: var(--muted); }
+.hint { margin-top: auto; font-size: 0.85rem; }
+
+/* ---------- reader ---------- */
+
+#reader { position: relative; }
+
+#reader-head {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  z-index: 2;
+}
+
+#back-btn {
+  background: none; border: none; color: var(--muted);
+  font-size: 1.4rem; line-height: 1; cursor: pointer; font-family: inherit;
+}
+#back-btn:hover { color: var(--ink); }
+
+#book-title {
+  flex: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+#progress { font-variant-numeric: tabular-nums; }
+
+#viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+#text {
+  position: absolute;
+  left: 50%;
+  width: min(var(--measure), 88vw);
+  will-change: transform;
+  transition: transform 90ms ease-out;
+}
+
+.line {
+  position: absolute;
+  width: 100%;
+  height: var(--line-height);
+  line-height: var(--line-height);
+  font-size: 1.25rem;
+  opacity: var(--dim);
+  white-space: pre-wrap;
+}
+
+.line.near { opacity: var(--near); }
+
+.line.current {
+  opacity: 1;
+}
+
+.line.current::before {
+  content: "";
+  position: absolute;
+  left: -1.25rem;
+  top: 15%;
+  height: 70%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.line.heading { font-weight: 700; font-size: 1.35rem; }
+
+/* ---------- drop veil ---------- */
+
+#drop-veil {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  border: 3px dashed var(--accent);
+  font-size: 1.5rem;
+  color: var(--accent);
+  z-index: 10;
+  pointer-events: none;
+}

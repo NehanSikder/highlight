@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Readwhile</title>
+<meta name="description" content="A typewriter-mode reader for the minutes while your coding agent works.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="reader.css">
+<meta name="theme-color" content="#14120f">
+</head>
+<body>
+
+<main id="library" class="screen">
+  <header class="lib-head">
+    <h1>Readwhile</h1>
+    <p class="tagline">Read while your agent works. Drop a book anywhere on this page.</p>
+  </header>
+  <ul id="book-list"></ul>
+  <p id="lib-empty" class="empty" hidden>
+    No books yet. Drag a <strong>.epub</strong>, <strong>.txt</strong>, or
+    <strong>.md</strong> file onto this window.
+  </p>
+  <p class="hint">↓ / j — next line &nbsp;·&nbsp; ↑ / k — back &nbsp;·&nbsp; Esc — library</p>
+</main>
+
+<main id="reader" class="screen" hidden>
+  <header id="reader-head">
+    <button id="back-btn" title="Library (Esc)">‹</button>
+    <span id="book-title"></span>
+    <span id="progress"></span>
+  </header>
+  <div id="viewport">
+    <div id="text"></div>
+  </div>
+</main>
+
+<div id="drop-veil" hidden><span>Drop to add book</span></div>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
