@@ -21,15 +21,20 @@
     No books yet. Drag a <strong>.epub</strong>, <strong>.txt</strong>, or
     <strong>.md</strong> file onto this window.
   </p>
-  <p class="hint">↓ / j — next line &nbsp;·&nbsp; ↑ / k — back &nbsp;·&nbsp; Esc — library</p>
+  <p class="hint">↓ / j / scroll — next line &nbsp;·&nbsp; ↑ / k — back &nbsp;·&nbsp; c — contents &nbsp;·&nbsp; Esc — library</p>
 </main>
 
 <main id="reader" class="screen" hidden>
   <header id="reader-head">
+    <button id="toc-btn" title="Contents (c)">☰</button>
     <button id="back-btn" title="Library (Esc)">‹</button>
     <span id="book-title"></span>
     <span id="progress"></span>
   </header>
+  <nav id="toc" hidden>
+    <h2>Contents</h2>
+    <ul id="toc-list"></ul>
+  </nav>
   <div id="viewport">
     <div id="text"></div>
   </div>

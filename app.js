@@ -263,6 +263,7 @@ const state = {
   line: 0,        // current line index
   lineHeight: 0,  // px, probed from CSS
   rendered: null, // {from, to} of rendered window
+  toc: [],        // [{line, text}] chapter entries for the open book
 };
 
 async function showLibrary() {
@@ -301,12 +302,69 @@ async function showLibrary() {
   }
 }
 
+/* Chapters = runs of consecutive heading lines (a wrapped heading spans
+ * several lines; collapse each run into one entry). */
+function buildToc(book) {
+  const toc = [];
+  let run = null;
+  for (let i = 0; i < book.lines.length; i++) {
+    const l = book.lines[i];
+    if (l.h) {
+      if (run) run.text += " " + l.t;
+      else { run = { line: i, text: l.t }; toc.push(run); }
+    } else if (l.t !== "") {
+      run = null;
+    }
+  }
+  return toc;
+}
+
+function renderToc() {
+  const list = $("toc-list");
+  list.textContent = "";
+  if (!state.toc.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "No chapters detected in this book.";
+    list.append(li);
+    return;
+  }
+  for (const entry of state.toc) {
+    const li = document.createElement("li");
+    li.textContent = entry.text;
+    li.addEventListener("click", () => {
+      state.line = entry.line;
+      saveProgress(state.book.id, entry.line);
+      renderLines(true);
+      toggleToc(false);
+    });
+    list.append(li);
+  }
+}
+
+function toggleToc(show) {
+  const toc = $("toc");
+  const open = show ?? toc.hidden;
+  toc.hidden = !open;
+  if (!open) return;
+  // Mark the chapter the cursor is in and bring it into view.
+  let activeIdx = -1;
+  state.toc.forEach((e, i) => { if (e.line <= state.line) activeIdx = i; });
+  [...$("toc-list").children].forEach((li, i) => {
+    li.classList.toggle("active", i === activeIdx);
+    if (i === activeIdx) li.scrollIntoView?.({ block: "center" });
+  });
+}
+
 async function openBook(id) {
   const book = await state.store.get(id);
   if (!book) return;
   state.book = book;
   state.line = Math.min(loadProgress()[id] || 0, book.lines.length - 1);
   state.rendered = null;
+  state.toc = buildToc(book);
+  renderToc();
+  $("toc").hidden = true;
 
   $("library").hidden = true;
   $("reader").hidden = false;
@@ -390,13 +448,39 @@ document.addEventListener("keydown", (e) => {
     case "ArrowUp": case "k": move(-1); break;
     case "PageDown": case " ": move(10); break;
     case "PageUp": move(-10); break;
-    case "Escape": case "b": showLibrary(); return;
+    case "c": toggleToc(); break;
+    case "Escape": case "b":
+      if (!$("toc").hidden) toggleToc(false);
+      else showLibrary();
+      return;
     default: return;
   }
   e.preventDefault();
 });
 
+/* Scroll wheel / trackpad moves the cursor line by line — the text still
+ * scrolls under the fixed marker, exactly like ↓/↑. */
+let wheelAcc = 0;
+document.addEventListener("wheel", (e) => {
+  if (!state.book || $("reader").hidden) return;
+  if (e.target.closest?.("#toc")) return; // let the contents panel scroll itself
+  e.preventDefault();
+  const px = e.deltaMode === 1 ? e.deltaY * state.lineHeight : e.deltaY;
+  wheelAcc += px;
+  const steps = Math.trunc(wheelAcc / state.lineHeight);
+  if (steps) {
+    wheelAcc -= steps * state.lineHeight;
+    move(steps);
+  }
+}, { passive: false });
+
 $("back-btn").addEventListener("click", showLibrary);
+$("toc-btn").addEventListener("click", (e) => { e.stopPropagation(); toggleToc(); });
+
+// Clicking anywhere outside the panel closes it.
+document.addEventListener("click", (e) => {
+  if (!$("toc").hidden && !e.target.closest?.("#toc")) toggleToc(false);
+});
 
 window.addEventListener("resize", () => { if (state.book) renderLines(true); });
 
