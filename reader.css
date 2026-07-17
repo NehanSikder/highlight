@@ -24,6 +24,10 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Author display rules (flex etc.) override the UA's [hidden] handling —
+ * without this, "hidden" elements like the drop veil stay visible. */
+[hidden] { display: none !important; }
+
 html, body {
   height: 100%;
   background: var(--bg);
