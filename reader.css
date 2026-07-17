@@ -22,6 +22,23 @@
   }
 }
 
+/* Explicit user choice (theme toggle) overrides the system scheme. */
+:root[data-theme="dark"] {
+  --bg: #14120f;
+  --ink: #e8e2d6;
+  --muted: #8f877a;
+  --border: #4a453c;
+  --current-bg: #2a2620;
+}
+
+:root[data-theme="light"] {
+  --bg: #f9f5ec;
+  --ink: #211c15;
+  --muted: #6f6759;
+  --border: #d4ccbc;
+  --current-bg: #efe6d2;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* Author display rules (flex etc.) override the UA's [hidden] handling —
@@ -50,11 +67,28 @@ html, body {
   overflow-y: auto;
 }
 
+.lib-head { position: relative; }
+
 .lib-head h1 {
   font-size: 2rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
+
+#theme-btn {
+  position: absolute;
+  top: 0; right: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+#theme-btn:hover { color: var(--ink); border-color: var(--accent); }
 
 .tagline { color: var(--muted); margin-top: 0.5rem; }
 
@@ -166,7 +200,11 @@ html, body {
   height: var(--line-height);
   line-height: var(--line-height);
   font-size: 1.25rem;
-  white-space: pre-wrap;
+  /* One stored line must always be exactly one rendered row. Text is
+   * pre-wrapped by JS at a character count; since ch-units only estimate
+   * proportional glyph widths, a wide line must overflow to the right —
+   * never rewrap onto the next line's row. */
+  white-space: pre;
 }
 
 .line.current {
