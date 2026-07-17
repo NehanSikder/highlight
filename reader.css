@@ -3,10 +3,11 @@
 :root {
   --bg: #14120f;
   --ink: #e8e2d6;
-  --dim: 0.28;
-  --near: 0.45;
+  --dim: 0.55;           /* focus dimming — adjustable with the "d" key */
+  --near: 0.75;
   --accent: #c9a86a;
-  --muted: #7d766a;
+  --muted: #8f877a;
+  --border: #4a453c;
   --marker-y: 38vh;      /* fixed vertical home of the current line */
   --measure: 66ch;
   --line-height: 2.1rem; /* keep in sync with LINE_HEIGHT probe in app.js */
@@ -14,9 +15,12 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f6f1e7;
-    --ink: #2b2620;
-    --muted: #8a8272;
+    --bg: #f9f5ec;
+    --ink: #211c15;
+    --dim: 0.6;
+    --near: 0.8;
+    --muted: #6f6759;
+    --border: #d4ccbc;
   }
 }
 
@@ -59,7 +63,7 @@ html, body {
   align-items: baseline;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  border: 1px solid color-mix(in srgb, var(--muted) 35%, transparent);
+  border: 1px solid var(--border);
   border-radius: 10px;
   cursor: pointer;
 }
@@ -159,7 +163,7 @@ html, body {
   max-width: min(40rem, 90vw);
   padding: 0.6rem 1rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+  background: var(--bg);
   border: 1px solid var(--accent);
   color: var(--ink);
   font-size: 0.9rem;
@@ -169,7 +173,8 @@ html, body {
 #drop-veil {
   position: fixed; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  background: var(--bg);
+  opacity: 0.9;
   border: 3px dashed var(--accent);
   font-size: 1.5rem;
   color: var(--accent);
