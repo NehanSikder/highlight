@@ -14,6 +14,29 @@ const RENDER_WINDOW = 100;    // lines rendered above/below the cursor
 const DB_NAME = "readwhile";
 const DB_VERSION = 1;
 
+// ---------- status surface ----------
+// Every failure must be visible on the page; silent failure is forbidden.
+
+let statusTimer = null;
+function status(msg, sticky) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(statusTimer);
+  if (!sticky) statusTimer = setTimeout(() => { el.hidden = true; }, 6000);
+  console.warn("[readwhile]", msg);
+}
+
+window.addEventListener("error", (e) => status("Error: " + e.message, true));
+window.addEventListener("unhandledrejection", (e) =>
+  status("Error: " + (e.reason?.message || e.reason), true));
+
+function newId() {
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : "b-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
 // ---------- IndexedDB ----------
 
 function openDb() {
@@ -59,6 +82,36 @@ function dbDelete(db, id) {
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
+}
+
+/* Storage with graceful degradation: IndexedDB when available; otherwise an
+ * in-memory store with a visible warning (Safari blocks IndexedDB on file://
+ * pages — the hosted/installed app is unaffected). */
+async function initStore() {
+  try {
+    const db = await openDb();
+    // Some browsers only fail at first transaction, so probe with a read.
+    await dbAll(db);
+    return {
+      persistent: true,
+      put: (b) => dbPut(db, b),
+      all: () => dbAll(db),
+      get: (id) => dbGet(db, id),
+      remove: (id) => dbDelete(db, id),
+    };
+  } catch (err) {
+    const mem = new Map();
+    status(
+      "This browser blocks storage for local files — books won't be saved. " +
+      "Use the hosted page (or Chrome) and install it as an app.", true);
+    return {
+      persistent: false,
+      put: async (b) => { mem.set(b.id, b); },
+      all: async () => [...mem.values()],
+      get: async (id) => mem.get(id),
+      remove: async (id) => { mem.delete(id); },
+    };
+  }
 }
 
 // ---------- progress + metrics (localStorage: small, synchronous) ----------
@@ -193,7 +246,7 @@ async function fileToBook(file) {
   const lines = paragraphsToLines(paragraphs);
   if (!lines.length) throw new Error("File contained no text: " + file.name);
   return {
-    id: crypto.randomUUID(),
+    id: newId(),
     title,
     addedAt: Date.now(),
     lines,
@@ -205,7 +258,7 @@ async function fileToBook(file) {
 const $ = (id) => document.getElementById(id);
 
 const state = {
-  db: null,
+  store: null,
   book: null,     // currently open book
   line: 0,        // current line index
   lineHeight: 0,  // px, probed from CSS
@@ -217,7 +270,7 @@ async function showLibrary() {
   $("reader").hidden = true;
   $("library").hidden = false;
 
-  const books = await dbAll(state.db);
+  const books = await state.store.all();
   books.sort((a, b) => b.addedAt - a.addedAt);
   const progress = loadProgress();
   const list = $("book-list");
@@ -239,7 +292,7 @@ async function showLibrary() {
     del.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`Remove "${b.title}"?`)) return;
-      await dbDelete(state.db, b.id);
+      await state.store.remove(b.id);
       showLibrary();
     });
     li.append(title, pctEl, del);
@@ -249,7 +302,7 @@ async function showLibrary() {
 }
 
 async function openBook(id) {
-  const book = await dbGet(state.db, id);
+  const book = await state.store.get(id);
   if (!book) return;
   state.book = book;
   state.line = Math.min(loadProgress()[id] || 0, book.lines.length - 1);
@@ -370,22 +423,37 @@ document.addEventListener("drop", async (e) => {
   e.preventDefault();
   dragDepth = 0;
   $("drop-veil").hidden = true;
-  for (const file of e.dataTransfer.files) {
+  const files = e.dataTransfer?.files ?? [];
+  if (!files.length) {
+    // Dragging out of an app's library (Books, Calibre, mail) often delivers
+    // no real file — only Finder drags reliably do.
+    status("No file received — drag the book file from Finder, not from another app.");
+    return;
+  }
+  let added = 0;
+  for (const file of files) {
     try {
       const book = await fileToBook(file);
-      await dbPut(state.db, book);
+      await state.store.put(book);
+      added++;
+      status(`Added "${book.title}" (${book.lines.length} lines)`);
     } catch (err) {
-      alert(err.message || String(err));
+      status("Couldn't add " + file.name + ": " + (err.message || err), true);
     }
   }
-  if (!state.book) showLibrary();
+  if (added && !state.book) showLibrary();
 });
 
 // ---------- boot ----------
 
 (async function boot() {
-  state.db = await openDb();
-  await showLibrary();
+  try {
+    state.store = await initStore();
+    await showLibrary();
+  } catch (err) {
+    status("Failed to start: " + (err.message || err), true);
+    return;
+  }
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
