@@ -477,6 +477,26 @@ document.addEventListener("wheel", (e) => {
 $("back-btn").addEventListener("click", showLibrary);
 $("toc-btn").addEventListener("click", (e) => { e.stopPropagation(); toggleToc(); });
 
+// ---------- theme ----------
+
+const THEME_KEY = "rw-theme";
+
+function currentTheme() {
+  return localStorage.getItem(THEME_KEY) ||
+    (window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark");
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  $("theme-btn").textContent = theme === "dark" ? "☀" : "☾";
+}
+
+$("theme-btn").addEventListener("click", () => {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+
 // Clicking anywhere outside the panel closes it.
 document.addEventListener("click", (e) => {
   if (!$("toc").hidden && !e.target.closest?.("#toc")) toggleToc(false);
@@ -529,6 +549,9 @@ document.addEventListener("drop", async (e) => {
 // ---------- boot ----------
 
 (async function boot() {
+  // Follow the system scheme until the user picks one with the toggle.
+  if (localStorage.getItem(THEME_KEY)) applyTheme(localStorage.getItem(THEME_KEY));
+  else $("theme-btn").textContent = currentTheme() === "dark" ? "☀" : "☾";
   try {
     state.store = await initStore();
     await showLibrary();
