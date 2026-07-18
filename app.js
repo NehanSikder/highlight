@@ -560,8 +560,28 @@ function renderLines(force) {
     el.classList.toggle("current", Number(el.dataset.i) === line);
   }
 
-  $("progress").textContent =
-    Math.round(100 * (line / Math.max(1, book.lines.length - 1))) + "%";
+  $("progress").textContent = progressLabel(book, line, state.toc);
+}
+
+/* Near-goal progress (goal gradient): a whole-book percentage is a bottomless
+ * bowl — motivation tracks the distance to the *next* finish line, so lead
+ * with the lines left in the current chapter and keep the book % secondary.
+ * Books without chapters (or past the last heading) count down to the end. */
+function progressLabel(book, line, toc) {
+  const pct = Math.round(100 * (line / Math.max(1, book.lines.length - 1))) + "%";
+  let nextStop = null;
+  for (const e of toc) {
+    if (e.line > line) { nextStop = e.line; break; }
+  }
+  const end = nextStop ?? book.lines.length;
+  let left = 0;
+  for (let i = line + 1; i < end; i++) {
+    if (book.lines[i].t !== "") left++;
+  }
+  if (left === 0) return pct;
+  return nextStop != null
+    ? `${left} left in chapter · ${pct}`
+    : `${left} to the end · ${pct}`;
 }
 
 /* Move by delta, skipping blank lines in the direction of travel so every
