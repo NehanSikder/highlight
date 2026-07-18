@@ -143,6 +143,13 @@ function logLineRead() {
   localStorage.setItem("hl-lines-read", JSON.stringify(log));
 }
 
+function lifetimeLines() {
+  try {
+    const log = JSON.parse(localStorage.getItem("hl-lines-read") || "{}");
+    return Object.values(log).reduce((a, b) => a + b, 0);
+  } catch { return 0; }
+}
+
 // ---------- text → lines ----------
 
 /* Wrap one paragraph to the measure by words. Returns array of line strings. */
@@ -414,7 +421,19 @@ const state = {
   lineHeight: 0,  // px, probed from CSS
   rendered: null, // {from, to} of rendered window
   toc: [],        // [{line, text}] chapter entries for the open book
+  chapter: null,  // {start, lines} — time/lines since entering current chapter
+  celebrated: null,   // Set of toc indexes already celebrated this session
+  finishedShown: false,
 };
+
+/* Index of the chapter containing `line` (-1 before the first heading). */
+function tocIndexFor(line) {
+  let idx = -1;
+  for (let i = 0; i < state.toc.length; i++) {
+    if (state.toc[i].line <= line) idx = i;
+  }
+  return idx;
+}
 
 async function showLibrary() {
   state.book = null;
@@ -501,8 +520,7 @@ function toggleToc(show) {
   toc.hidden = !open;
   if (!open) return;
   // Mark the chapter the cursor is in and bring it into view.
-  let activeIdx = -1;
-  state.toc.forEach((e, i) => { if (e.line <= state.line) activeIdx = i; });
+  const activeIdx = tocIndexFor(state.line);
   [...$("toc-list").children].forEach((li, i) => {
     li.classList.toggle("active", i === activeIdx);
     if (i === activeIdx) li.scrollIntoView?.({ block: "center" });
@@ -517,6 +535,9 @@ async function openBook(id) {
   state.line = Math.min(loadProgress()[id] || 0, book.lines.length - 1);
   state.rendered = null;
   state.toc = buildToc(book);
+  state.chapter = { start: Date.now(), lines: 0 };
+  state.celebrated = new Set();
+  state.finishedShown = false;
   renderToc();
   $("toc").hidden = true;
 
@@ -586,10 +607,48 @@ function move(delta) {
     i = j;
   }
   if (i === state.line) return;
-  if (i > state.line) logLineRead();
+  if (i > state.line) {
+    logLineRead();
+    celebrateAdvance(state.line, i);
+  }
   state.line = i;
   saveProgress(book.id, i);
   renderLines(false);
+}
+
+/* Chapter-completion micro-reward. Crossing forward into a new chapter closes
+ * the previous one: a calm toast with that chapter's reading time and lines,
+ * occasionally topped with one lifetime stat — the "variable" in the reward.
+ * Only organic advancing fires (TOC jumps bypass move()), a chapter must have
+ * actually been read (>=5 lines), and each chapter celebrates once per
+ * session. Finishing the book gets its own moment. */
+function celebrateAdvance(prev, next) {
+  const ch = state.chapter;
+  if (!ch) return;
+  ch.lines += next - prev;
+
+  const prevIdx = tocIndexFor(prev);
+  const nextIdx = tocIndexFor(next);
+  if (nextIdx > prevIdx) {
+    if (prevIdx >= 0 && ch.lines >= 5 && !state.celebrated.has(prevIdx)) {
+      state.celebrated.add(prevIdx);
+      const mins = Math.round((Date.now() - ch.start) / 60000);
+      const time = mins < 1 ? "under a minute" : `${mins} min`;
+      const name = state.toc[prevIdx].text.slice(0, 48);
+      let msg = `✓ ${name} — done in ${time} · ${ch.lines} lines`;
+      const total = lifetimeLines();
+      if (Math.random() < 0.35 && total > ch.lines) {
+        msg += ` · ${total.toLocaleString()} lines all-time`;
+      }
+      status(msg);
+    }
+    state.chapter = { start: Date.now(), lines: 0 };
+  }
+
+  if (next >= state.book.lines.length - 1 && !state.finishedShown) {
+    state.finishedShown = true;
+    status(`You finished “${state.book.title}” — that's the whole book. ✦`);
+  }
 }
 
 // ---------- input ----------
