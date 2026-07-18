@@ -127,16 +127,37 @@ function saveProgress(bookId, line) {
   localStorage.setItem("hl-progress", JSON.stringify(p));
 }
 
-/* Every forward line-advance increments today's counter. This is the raw
- * feed for the (deferred) metrics/streaks layer — collected from day one,
- * no UI yet. */
+function readLog() {
+  try { return JSON.parse(localStorage.getItem("hl-lines-read") || "{}"); }
+  catch { return {}; }
+}
+
+/* Every forward line-advance increments today's counter — the raw feed for
+ * the streak. Days are UTC, matching the keys computeStreak walks. */
 function logLineRead() {
   const day = new Date().toISOString().slice(0, 10);
-  let log;
-  try { log = JSON.parse(localStorage.getItem("hl-lines-read") || "{}"); }
-  catch { log = {}; }
+  const log = readLog();
   log[day] = (log[day] || 0) + 1;
   localStorage.setItem("hl-lines-read", JSON.stringify(log));
+}
+
+/* Consecutive days with any reading, ending today (or yesterday — today
+ * isn't a miss until it's over). One grace day is allowed inside the chain,
+ * so a single missed day doesn't zero weeks of habit (the punitive version
+ * of streaks converts fatigue into guilt, which kills the habit faster). */
+function computeStreak(log, now = new Date()) {
+  const key = (d) => d.toISOString().slice(0, 10);
+  const d = new Date(now);
+  if (!log[key(d)]) d.setUTCDate(d.getUTCDate() - 1);
+  let streak = 0;
+  let grace = 1;
+  for (;;) {
+    if (log[key(d)]) streak++;
+    else if (streak > 0 && grace > 0) grace--;
+    else break;
+    d.setUTCDate(d.getUTCDate() - 1);
+  }
+  return streak;
 }
 
 // ---------- text → lines ----------
@@ -416,6 +437,11 @@ async function showLibrary() {
   state.book = null;
   $("reader").hidden = true;
   $("library").hidden = false;
+
+  const streak = computeStreak(readLog());
+  const streakEl = $("streak");
+  streakEl.hidden = streak < 2;
+  if (streak >= 2) streakEl.textContent = `🔥 ${streak}-day streak`;
 
   const books = await state.store.all();
   books.sort((a, b) => b.addedAt - a.addedAt);
