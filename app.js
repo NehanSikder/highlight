@@ -353,6 +353,13 @@ const FORMATS = [
       catch { throw new Error("Couldn't load the PDF engine — reload the page and try again."); }
       return mod.parsePdf(f, status);
     } },
+  { id: "mobi", label: ".mobi/.azw3", ext: /\.(mobi|azw3?|prc)$/i,
+    parse: async (f) => {
+      let mod;
+      try { mod = await import("./format-mobi.mjs"); }
+      catch { throw new Error("Couldn't load the MOBI engine — reload the page and try again."); }
+      return mod.parseMobi(f, status, domToParagraphs);
+    } },
 ];
 
 const SUPPORTED_LABEL = FORMATS.map((f) => f.label).join(", ");
@@ -369,7 +376,7 @@ async function sniffFormat(file) {
   const at = (i, n) => String.fromCharCode(...head.subarray(i, i + n));
 
   if (at(0, 5) === "%PDF-") return FORMATS.find((f) => f.id === "pdf");
-  if (at(60, 8) === "BOOKMOBI") throw new Error("MOBI/Kindle files aren’t supported yet.");
+  if (at(60, 8) === "BOOKMOBI") return FORMATS.find((f) => f.id === "mobi");
   if (head[0] === 0x50 && head[1] === 0x4b) return FORMATS.find((f) => f.id === "epub"); // PK zip
   if (at(0, 1) === "<") return FORMATS.find((f) => f.id === "html");                      // markup
   return null;
