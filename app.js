@@ -127,6 +127,10 @@ function saveProgress(bookId, line) {
   localStorage.setItem("hl-progress", JSON.stringify(p));
 }
 
+/* Zero-decision start: remember the last-opened book so the app boots
+ * straight back into it at the saved line. The library stays one Esc away. */
+const LAST_BOOK_KEY = "hl-last-book";
+
 /* Every forward line-advance increments today's counter. This is the raw
  * feed for the (deferred) metrics/streaks layer — collected from day one,
  * no UI yet. */
@@ -440,6 +444,9 @@ async function showLibrary() {
       e.stopPropagation();
       if (!confirm(`Remove "${b.title}"?`)) return;
       await state.store.remove(b.id);
+      if (localStorage.getItem(LAST_BOOK_KEY) === b.id) {
+        localStorage.removeItem(LAST_BOOK_KEY);
+      }
       showLibrary();
     });
     li.append(title, pctEl, del);
@@ -505,6 +512,7 @@ function toggleToc(show) {
 async function openBook(id) {
   const book = await state.store.get(id);
   if (!book) return;
+  localStorage.setItem(LAST_BOOK_KEY, id);
   state.book = book;
   state.line = Math.min(loadProgress()[id] || 0, book.lines.length - 1);
   state.rendered = null;
@@ -714,7 +722,14 @@ $("file-input").addEventListener("change", async (e) => {
   else $("theme-btn").textContent = currentTheme() === "dark" ? "☀" : "☾";
   try {
     state.store = await initStore();
-    await showLibrary();
+    // Resume the last book at its saved line — sessions start with reading,
+    // not a menu. Finished (or since-removed) books fall back to the library.
+    const lastId = localStorage.getItem(LAST_BOOK_KEY);
+    const last = lastId ? await state.store.get(lastId) : null;
+    const finished =
+      last && (loadProgress()[last.id] || 0) >= last.lines.length - 1;
+    if (last && !finished) await openBook(last.id);
+    else await showLibrary();
   } catch (err) {
     status("Failed to start: " + (err.message || err), true);
     return;
