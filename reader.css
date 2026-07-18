@@ -137,6 +137,21 @@ html, body {
 
 #reader { position: relative; }
 
+/* The header is fixed over the scrolling text. Without an opaque backdrop the
+ * lines bleed up through it and collide with the title. This short gradient
+ * gives the header an opaque backing (first ~3rem) and fades lines out as they
+ * approach the top edge. Uses var(--bg) so it tracks the light/dark theme.
+ * z-index 1 sits above the text but below the header (2), toc (5), etc. */
+#reader::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 6.5rem;
+  background: linear-gradient(var(--bg) 3rem, transparent);
+  z-index: 1;
+  pointer-events: none;
+}
+
 #reader-head {
   position: fixed;
   top: 0; left: 0; right: 0;
