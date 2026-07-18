@@ -137,32 +137,23 @@ html, body {
 
 #reader { position: relative; }
 
-/* The header is fixed over the scrolling text, so it needs an opaque
- * background of its own — otherwise lines bleed up through it and collide
- * with the title. The header grows with a wrapping title; the ::after strip
- * is a short fade hanging just below it so lines slip under the header edge
- * instead of hitting a hard line. */
+/* The header is transparent chrome in the page gutters: title top-left,
+ * progress top-right, and the centered text column scrolls clear to the top
+ * edge of the window between them. The title is capped to a corner-sized box
+ * so a long one wraps onto more lines there instead of reaching the text. */
 #reader-head {
   position: fixed;
   top: 0; left: 0; right: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   padding: 0.75rem 1.25rem;
   font-size: 0.85rem;
   color: var(--muted);
-  background: var(--bg);
   z-index: 2;
+  pointer-events: none;      /* only the controls themselves catch clicks */
 }
-
-#reader-head::after {
-  content: "";
-  position: absolute;
-  top: 100%; left: 0; right: 0;
-  height: 1.5rem;
-  background: linear-gradient(var(--bg), transparent);
-  pointer-events: none;
-}
+#reader-head > * { pointer-events: auto; }
 
 #back-btn, #toc-btn {
   background: none; border: none; color: var(--muted);
@@ -204,15 +195,12 @@ html, body {
 #toc li:hover { background: var(--current-bg); }
 #toc li.active { color: var(--accent); }
 
-/* Long titles wrap onto more lines inside the header rather than
- * truncating; the header stretches and the text keeps sliding under it. */
 #book-title {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
+  max-width: min(16rem, 30vw);
+  overflow-wrap: break-word;
 }
 
-#progress { font-variant-numeric: tabular-nums; }
+#progress { margin-left: auto; font-variant-numeric: tabular-nums; }
 
 #viewport {
   position: absolute;
