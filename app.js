@@ -1,4 +1,4 @@
-/* Readwhile — typewriter-mode reader.
+/* Highlight — typewriter-mode reader.
  *
  * Model: a book is a flat array of pre-wrapped lines. The current line is
  * highlighted at a fixed viewport position (--marker-y); arrow keys scroll
@@ -11,7 +11,7 @@
 
 const MEASURE = 66;           // wrap width in characters, matches --measure
 const RENDER_WINDOW = 100;    // lines rendered above/below the cursor
-const DB_NAME = "readwhile";
+const DB_NAME = "highlight";
 const DB_VERSION = 1;
 
 // ---------- status surface ----------
@@ -24,7 +24,7 @@ function status(msg, sticky) {
   el.hidden = false;
   clearTimeout(statusTimer);
   if (!sticky) statusTimer = setTimeout(() => { el.hidden = true; }, 6000);
-  console.warn("[readwhile]", msg);
+  console.warn("[highlight]", msg);
 }
 
 window.addEventListener("error", (e) => status("Error: " + e.message, true));
@@ -117,14 +117,14 @@ async function initStore() {
 // ---------- progress + metrics (localStorage: small, synchronous) ----------
 
 function loadProgress() {
-  try { return JSON.parse(localStorage.getItem("rw-progress") || "{}"); }
+  try { return JSON.parse(localStorage.getItem("hl-progress") || "{}"); }
   catch { return {}; }
 }
 
 function saveProgress(bookId, line) {
   const p = loadProgress();
   p[bookId] = line;
-  localStorage.setItem("rw-progress", JSON.stringify(p));
+  localStorage.setItem("hl-progress", JSON.stringify(p));
 }
 
 /* Every forward line-advance increments today's counter. This is the raw
@@ -133,10 +133,10 @@ function saveProgress(bookId, line) {
 function logLineRead() {
   const day = new Date().toISOString().slice(0, 10);
   let log;
-  try { log = JSON.parse(localStorage.getItem("rw-lines-read") || "{}"); }
+  try { log = JSON.parse(localStorage.getItem("hl-lines-read") || "{}"); }
   catch { log = {}; }
   log[day] = (log[day] || 0) + 1;
-  localStorage.setItem("rw-lines-read", JSON.stringify(log));
+  localStorage.setItem("hl-lines-read", JSON.stringify(log));
 }
 
 // ---------- text → lines ----------
@@ -479,7 +479,7 @@ $("toc-btn").addEventListener("click", (e) => { e.stopPropagation(); toggleToc()
 
 // ---------- theme ----------
 
-const THEME_KEY = "rw-theme";
+const THEME_KEY = "hl-theme";
 
 function currentTheme() {
   return localStorage.getItem(THEME_KEY) ||

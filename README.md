@@ -1,10 +1,9 @@
-# Readwhile — reader
+# Highlight
 
 A distraction-light, typewriter-mode book reader that runs entirely in your
-browser. Built as the reading surface for
-[Readwhile](https://github.com/NehanSikder/readwhile) — a setup that shows you a
-book during the minutes your coding agent is working — but it's a standalone
-reader and needs nothing else to run.
+browser. It lights one line at a time and keeps it at a fixed spot on screen,
+so your eyes never travel to find your place. It's a standalone reader and
+needs nothing else to run.
 
 **Live:** https://nehansikder.github.io/readwhile-reader/
 
@@ -54,7 +53,7 @@ localStorage. No network requests, no accounts, no telemetry.
 The [readwhile](https://github.com/NehanSikder/readwhile) hook engine (a
 separate repo) can auto-focus this reader while your coding agent works and
 return you to the terminal when it needs you. That engine identifies this
-reader by its window title (`Readwhile`) or app name — there is **no code
+reader by its window title (`Highlight`) or app name — there is **no code
 dependency** in either direction. This reader is fully usable on its own, and
 the hooks can point at any reading app.
 
