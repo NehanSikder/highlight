@@ -173,6 +173,35 @@ function paragraphsToLines(paragraphs) {
 
 // ---------- file parsing ----------
 
+/* Shared HTML → paragraphs walk. Block elements become paragraphs; headings
+ * (h1–h6) are flagged. Used by the epub, html, and (via serialization) other
+ * markup formats — one place to change how markup maps onto reading lines. */
+function domToParagraphs(doc) {
+  const out = [];
+  const sel = "p, h1, h2, h3, h4, h5, h6, li, blockquote";
+  for (const el of doc.body?.querySelectorAll(sel) ?? []) {
+    const text = el.textContent.replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    out.push(/^h[1-6]$/i.test(el.tagName) ? { text, heading: true } : { text });
+  }
+  return out;
+}
+
+/* Nearest ancestor whose lowercased localName is in `names` (namespace-safe,
+ * for XML formats where CSS `closest()` is unreliable across namespaces). */
+function hasAncestorLocal(el, names) {
+  for (let n = el.parentElement; n; n = n.parentElement) {
+    if (names.includes((n.localName || "").toLowerCase())) return true;
+  }
+  return false;
+}
+
+/* First attribute on `el` whose localName matches (ignoring xml prefix). */
+function attrByLocal(el, local) {
+  for (const a of el.attributes) if (a.localName === local) return a.value;
+  return null;
+}
+
 function parsePlainText(text) {
   // Paragraph = blank-line-separated block. Markdown headings become headings.
   const blocks = text.replace(/\r\n/g, "\n").split(/\n\s*\n/);
@@ -219,31 +248,135 @@ async function parseEpub(arrayBuffer) {
     if (!file) continue;
     const doc = new DOMParser().parseFromString(
       await file.async("string"), "text/html");
-    for (const el of doc.body?.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote") ?? []) {
-      const text = el.textContent.replace(/\s+/g, " ").trim();
-      if (!text) continue;
-      paragraphs.push(/^h[1-6]$/i.test(el.tagName)
-        ? { text, heading: true }
-        : { text });
-    }
+    paragraphs.push(...domToParagraphs(doc));
   }
   if (!paragraphs.length) throw new Error("No readable text found in epub");
   return { paragraphs, title };
 }
 
-async function fileToBook(file) {
-  const name = file.name.replace(/\.(epub|txt|md|markdown)$/i, "");
-  let paragraphs, title = name;
-  if (/\.epub$/i.test(file.name)) {
-    const parsed = await parseEpub(await file.arrayBuffer());
-    paragraphs = parsed.paragraphs;
-    if (parsed.title) title = parsed.title;
-  } else if (/\.(txt|md|markdown)$/i.test(file.name)) {
-    paragraphs = parsePlainText(await file.text());
-  } else {
-    throw new Error("Unsupported file type: " + file.name + " (use .epub, .txt, .md)");
+/* Plain HTML / XHTML — a single document, walked the same way as an epub
+ * chapter. Title comes from <title> if present. */
+function parseHtml(text) {
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  const paragraphs = domToParagraphs(doc);
+  if (!paragraphs.length) throw new Error("No readable text found in HTML");
+  const title = doc.querySelector("title")?.textContent?.trim() || null;
+  return { paragraphs, title };
+}
+
+/* FictionBook 2 (.fb2) — XML. <title>/<subtitle> are headings; <p>/<v> are
+ * body text. FB2 puts <p> inside <title>, so paragraph elements nested in a
+ * heading are skipped (their text already arrives via the heading). Parsed
+ * with localName lookups to stay robust to the default FB2 namespace. */
+function parseFb2(text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  if (doc.querySelector("parsererror")) throw new Error("Not a valid .fb2 (XML parse error)");
+
+  let title = null;
+  for (const el of doc.getElementsByTagName("*")) {
+    if (el.localName === "book-title") { title = el.textContent.trim() || null; break; }
   }
-  const lines = paragraphsToLines(paragraphs);
+
+  const body = [...doc.getElementsByTagName("*")].find((el) => el.localName === "body");
+  const paragraphs = [];
+  for (const el of body?.getElementsByTagName("*") ?? []) {
+    const tag = (el.localName || "").toLowerCase();
+    const heading = tag === "title" || tag === "subtitle";
+    if (!heading && tag !== "p" && tag !== "v") continue;
+    if (!heading && hasAncestorLocal(el, ["title", "subtitle"])) continue;
+    const t = el.textContent.replace(/\s+/g, " ").trim();
+    if (!t) continue;
+    paragraphs.push(heading ? { text: t, heading: true } : { text: t });
+  }
+  if (!paragraphs.length) throw new Error("No readable text found in .fb2");
+  return { paragraphs, title };
+}
+
+/* Word .docx — a zip of XML. Text lives in word/document.xml as <w:p> runs of
+ * <w:t>; paragraphs whose style is Heading… or Title become headings. Reuses
+ * the vendored JSZip, so no new dependency. */
+async function parseDocx(arrayBuffer) {
+  const zip = await JSZip.loadAsync(arrayBuffer);
+  const docFile = zip.file("word/document.xml");
+  if (!docFile) throw new Error("Not a valid .docx (no word/document.xml)");
+  const doc = new DOMParser().parseFromString(await docFile.async("string"), "application/xml");
+
+  const paragraphs = [];
+  for (const p of doc.getElementsByTagName("*")) {
+    if (p.localName !== "p") continue;
+    let text = "";
+    let heading = false;
+    for (const child of p.getElementsByTagName("*")) {
+      if (child.localName === "t") text += child.textContent;
+      else if (child.localName === "pStyle") {
+        const v = attrByLocal(child, "val");
+        if (v && /^(heading|title)/i.test(v)) heading = true;
+      }
+    }
+    text = text.replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    paragraphs.push(heading ? { text, heading: true } : { text });
+  }
+  if (!paragraphs.length) throw new Error("No readable text found in .docx");
+
+  let title = null;
+  const core = zip.file("docProps/core.xml");
+  if (core) {
+    const c = new DOMParser().parseFromString(await core.async("string"), "application/xml");
+    for (const el of c.getElementsByTagName("*")) {
+      if (el.localName === "title") { title = el.textContent.trim() || null; break; }
+    }
+  }
+  return { paragraphs, title };
+}
+
+/* Format registry. Each entry maps an extension to an async parser returning
+ * { paragraphs, title }. Every format only has to produce clean paragraphs —
+ * wrapping, the TOC, and progress are all format-agnostic downstream. A heavy
+ * parser (e.g. a future PDF/MOBI reader) can lazy-load its library inside
+ * `parse` via dynamic import without changing anything here. */
+const FORMATS = [
+  { id: "epub", label: ".epub", ext: /\.epub$/i,
+    parse: async (f) => parseEpub(await f.arrayBuffer()) },
+  { id: "text", label: ".txt/.md", ext: /\.(txt|md|markdown)$/i,
+    parse: async (f) => ({ paragraphs: parsePlainText(await f.text()), title: null }) },
+  { id: "html", label: ".html", ext: /\.(x?html?)$/i,
+    parse: async (f) => parseHtml(await f.text()) },
+  { id: "fb2", label: ".fb2", ext: /\.fb2$/i,
+    parse: async (f) => parseFb2(await f.text()) },
+  { id: "docx", label: ".docx", ext: /\.docx$/i,
+    parse: async (f) => parseDocx(await f.arrayBuffer()) },
+  // Tier 3: PDF slots in here — `parse: async (f) => (await loadPdf())(f)`.
+];
+
+const SUPPORTED_LABEL = FORMATS.map((f) => f.label).join(", ");
+
+/* Read the first bytes to recover from a wrong/absent extension, and to give a
+ * precise message for known-but-unsupported containers. Returns a FORMATS entry
+ * or null; throws a friendly error for recognized formats we don't handle yet. */
+async function sniffFormat(file) {
+  let head;
+  try {
+    const slice = file.slice ? file.slice(0, 68) : file;
+    head = new Uint8Array((await slice.arrayBuffer()).slice(0, 68));
+  } catch { return null; }
+  const at = (i, n) => String.fromCharCode(...head.subarray(i, i + n));
+
+  if (at(0, 5) === "%PDF-") throw new Error("PDF isn’t supported yet — it’s coming next.");
+  if (at(60, 8) === "BOOKMOBI") throw new Error("MOBI/Kindle files aren’t supported yet.");
+  if (head[0] === 0x50 && head[1] === 0x4b) return FORMATS.find((f) => f.id === "epub"); // PK zip
+  if (at(0, 1) === "<") return FORMATS.find((f) => f.id === "html");                      // markup
+  return null;
+}
+
+async function fileToBook(file) {
+  const fmt = FORMATS.find((f) => f.ext.test(file.name)) || await sniffFormat(file);
+  if (!fmt) {
+    throw new Error(`Unsupported file: ${file.name} — use ${SUPPORTED_LABEL}.`);
+  }
+  const parsed = await fmt.parse(file);
+  const title = (parsed.title && parsed.title.trim()) || file.name.replace(/\.[^./\\]+$/, "");
+  const lines = paragraphsToLines(parsed.paragraphs || []);
   if (!lines.length) throw new Error("File contained no text: " + file.name);
   return {
     id: newId(),
