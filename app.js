@@ -333,8 +333,8 @@ async function parseDocx(arrayBuffer) {
 /* Format registry. Each entry maps an extension to an async parser returning
  * { paragraphs, title }. Every format only has to produce clean paragraphs —
  * wrapping, the TOC, and progress are all format-agnostic downstream. A heavy
- * parser (e.g. a future PDF/MOBI reader) can lazy-load its library inside
- * `parse` via dynamic import without changing anything here. */
+ * parser (like PDF below, or a future MOBI reader) can lazy-load its library
+ * inside `parse` via dynamic import without changing anything here. */
 const FORMATS = [
   { id: "epub", label: ".epub", ext: /\.epub$/i,
     parse: async (f) => parseEpub(await f.arrayBuffer()) },
@@ -346,7 +346,13 @@ const FORMATS = [
     parse: async (f) => parseFb2(await f.text()) },
   { id: "docx", label: ".docx", ext: /\.docx$/i,
     parse: async (f) => parseDocx(await f.arrayBuffer()) },
-  // Tier 3: PDF slots in here — `parse: async (f) => (await loadPdf())(f)`.
+  { id: "pdf", label: ".pdf", ext: /\.pdf$/i,
+    parse: async (f) => {
+      let mod;
+      try { mod = await import("./format-pdf.mjs"); }
+      catch { throw new Error("Couldn't load the PDF engine — reload the page and try again."); }
+      return mod.parsePdf(f, status);
+    } },
 ];
 
 const SUPPORTED_LABEL = FORMATS.map((f) => f.label).join(", ");
@@ -362,7 +368,7 @@ async function sniffFormat(file) {
   } catch { return null; }
   const at = (i, n) => String.fromCharCode(...head.subarray(i, i + n));
 
-  if (at(0, 5) === "%PDF-") throw new Error("PDF isn’t supported yet — it’s coming next.");
+  if (at(0, 5) === "%PDF-") return FORMATS.find((f) => f.id === "pdf");
   if (at(60, 8) === "BOOKMOBI") throw new Error("MOBI/Kindle files aren’t supported yet.");
   if (head[0] === 0x50 && head[1] === 0x4b) return FORMATS.find((f) => f.id === "epub"); // PK zip
   if (at(0, 1) === "<") return FORMATS.find((f) => f.id === "html");                      // markup
