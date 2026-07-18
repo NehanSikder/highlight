@@ -137,21 +137,11 @@ html, body {
 
 #reader { position: relative; }
 
-/* The header is fixed over the scrolling text. Without an opaque backdrop the
- * lines bleed up through it and collide with the title. This short gradient
- * gives the header an opaque backing (first ~3rem) and fades lines out as they
- * approach the top edge. Uses var(--bg) so it tracks the light/dark theme.
- * z-index 1 sits above the text but below the header (2), toc (5), etc. */
-#reader::before {
-  content: "";
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 6.5rem;
-  background: linear-gradient(var(--bg) 3rem, transparent);
-  z-index: 1;
-  pointer-events: none;
-}
-
+/* The header is fixed over the scrolling text, so it needs an opaque
+ * background of its own — otherwise lines bleed up through it and collide
+ * with the title. The header grows with a wrapping title; the ::after strip
+ * is a short fade hanging just below it so lines slip under the header edge
+ * instead of hitting a hard line. */
 #reader-head {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -161,7 +151,17 @@ html, body {
   padding: 0.75rem 1.25rem;
   font-size: 0.85rem;
   color: var(--muted);
+  background: var(--bg);
   z-index: 2;
+}
+
+#reader-head::after {
+  content: "";
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  height: 1.5rem;
+  background: linear-gradient(var(--bg), transparent);
+  pointer-events: none;
 }
 
 #back-btn, #toc-btn {
@@ -204,9 +204,12 @@ html, body {
 #toc li:hover { background: var(--current-bg); }
 #toc li.active { color: var(--accent); }
 
+/* Long titles wrap onto more lines inside the header rather than
+ * truncating; the header stretches and the text keeps sliding under it. */
 #book-title {
   flex: 1;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 #progress { font-variant-numeric: tabular-nums; }
