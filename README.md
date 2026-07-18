@@ -14,10 +14,15 @@ needs nothing else to run.
   travel to find your place.
 - **Line-exact resume.** Position is saved per book at line granularity, so
   reopening (or switching back mid-session) lands you exactly where you left.
-- **Reads `.epub`, `.docx`, `.fb2`, `.html`, `.txt`, `.md`.** Drag a file
-  anywhere onto the page. Everything is parsed in-browser (vendored JSZip);
-  nothing is uploaded and no server is involved. Books are stored locally in
-  IndexedDB. (PDF support is next.)
+- **Reads `.epub`, `.pdf`, `.docx`, `.fb2`, `.html`, `.txt`, `.md`.** Drag a
+  file anywhere onto the page. Everything is parsed in-browser (vendored JSZip
+  and pdf.js); nothing is uploaded and no server is involved. Books are stored
+  locally in IndexedDB.
+- **PDF is for text-based, mostly single-column documents** — books, reports,
+  essays. The text is reflowed from the page layout, so complex layouts
+  (tables, heavy multi-column, footnote-dense pages) come out imperfect, and
+  scanned/image PDFs are rejected — there's no OCR. Password-protected PDFs
+  aren't supported.
 - **Contents panel.** Press `c` or the ☰ button to jump between chapters.
 - **Dark / light toggle**, following your system theme until you choose.
 
