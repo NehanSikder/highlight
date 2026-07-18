@@ -14,9 +14,10 @@ needs nothing else to run.
   travel to find your place.
 - **Line-exact resume.** Position is saved per book at line granularity, so
   reopening (or switching back mid-session) lands you exactly where you left.
-- **Reads `.epub`, `.txt`, `.md`.** Drag a file anywhere onto the page. Epubs
-  are parsed in-browser (vendored JSZip); nothing is uploaded and no server is
-  involved. Books are stored locally in IndexedDB.
+- **Reads `.epub`, `.docx`, `.fb2`, `.html`, `.txt`, `.md`.** Drag a file
+  anywhere onto the page. Everything is parsed in-browser (vendored JSZip);
+  nothing is uploaded and no server is involved. Books are stored locally in
+  IndexedDB. (PDF support is next.)
 - **Contents panel.** Press `c` or the ☰ button to jump between chapters.
 - **Dark / light toggle**, following your system theme until you choose.
 

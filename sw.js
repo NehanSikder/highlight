@@ -1,7 +1,7 @@
 /* Highlight service worker — cache-first shell so the reader opens instantly
  * and works offline. Bump VERSION on any shell change. */
 
-const VERSION = "hl-v1";
+const VERSION = "hl-v2";
 const SHELL = [
   ".",
   "index.html",
