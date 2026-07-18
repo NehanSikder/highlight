@@ -5,7 +5,7 @@ browser. It lights one line at a time and keeps it at a fixed spot on screen,
 so your eyes never travel to find your place. It's a standalone reader and
 needs nothing else to run.
 
-**Live:** https://nehansikder.github.io/readwhile-reader/
+**Live:** https://nehansikder.github.io/highlight/
 
 ## What it does
 
