@@ -139,6 +139,47 @@ function logLineRead() {
   localStorage.setItem("hl-lines-read", JSON.stringify(log));
 }
 
+// ---------- pause nudge ----------
+/* Feed apps remove stopping cues to farm attention; a reader should add
+ * them before fatigue turns into aversion. After ~25 min of continuous
+ * reading, suggest a pause at the next chapter start — stopping just inside
+ * a fresh chapter leaves an open loop that's easy to come back to. After
+ * 30 min, suggest one anywhere. One nudge per session; a 5-minute idle gap
+ * starts a new session. */
+
+const NUDGE_AFTER_MS = 25 * 60 * 1000;
+const NUDGE_HARD_MS = 30 * 60 * 1000;
+const SESSION_GAP_MS = 5 * 60 * 1000;
+
+function trackSession(next) {
+  const now = Date.now();
+  let s = state.session;
+  if (!s || now - s.last > SESSION_GAP_MS) {
+    s = state.session = { start: now, last: now, nudged: false };
+  }
+  s.last = now;
+  if (s.nudged) return;
+
+  const elapsed = now - s.start;
+  if (elapsed < NUDGE_AFTER_MS) return;
+
+  // "Near a chapter start" = a heading within the last dozen lines.
+  let nearChapterStart = false;
+  for (let i = Math.max(0, next - 12); i <= next; i++) {
+    if (state.book.lines[i]?.h) { nearChapterStart = true; break; }
+  }
+  if (!nearChapterStart && elapsed < NUDGE_HARD_MS) return;
+
+  s.nudged = true;
+  const mins = Math.round(elapsed / 60000);
+  status(
+    `☕ ${mins} min of reading — a good moment to pause. ` +
+    (nearChapterStart
+      ? "A fresh chapter just opened, so it'll be easy to pick back up."
+      : "Your spot is saved to the exact line.")
+  );
+}
+
 // ---------- text → lines ----------
 
 /* Wrap one paragraph to the measure by words. Returns array of line strings. */
@@ -410,6 +451,7 @@ const state = {
   lineHeight: 0,  // px, probed from CSS
   rendered: null, // {from, to} of rendered window
   toc: [],        // [{line, text}] chapter entries for the open book
+  session: null,  // {start, last, nudged} — continuous-reading tracker
 };
 
 async function showLibrary() {
@@ -578,7 +620,10 @@ function move(delta) {
     i = j;
   }
   if (i === state.line) return;
-  if (i > state.line) logLineRead();
+  if (i > state.line) {
+    logLineRead();
+    trackSession(i);
+  }
   state.line = i;
   saveProgress(book.id, i);
   renderLines(false);
