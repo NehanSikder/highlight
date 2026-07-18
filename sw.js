@@ -1,16 +1,18 @@
 /* Highlight service worker — cache-first shell so the reader opens instantly
  * and works offline. Bump VERSION on any shell change. */
 
-const VERSION = "hl-v3";
+const VERSION = "hl-v4";
 const SHELL = [
   ".",
   "index.html",
   "reader.css",
   "app.js",
   "format-pdf.mjs",
+  "format-mobi.mjs",
   "vendor/jszip.min.js",
   "vendor/pdf.min.mjs",
   "vendor/pdf.worker.min.mjs",
+  "vendor/foliate-mobi.js",
   "manifest.webmanifest",
 ];
 
