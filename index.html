@@ -14,13 +14,18 @@
 <main id="library" class="screen">
   <header class="lib-head">
     <h1>Readwhile</h1>
-    <p class="tagline">Read while your agent works. Drop a book anywhere on this page.</p>
     <button id="theme-btn" title="Toggle dark mode">☾</button>
   </header>
+  <div class="lib-actions">
+    <button id="add-btn">+ Add book</button>
+    <span class="lib-actions-hint">or drag a file onto the page</span>
+  </div>
+  <input id="file-input" type="file" accept=".epub,.txt,.md,.markdown" multiple hidden>
   <ul id="book-list"></ul>
   <p id="lib-empty" class="empty" hidden>
-    No books yet. Drag a <strong>.epub</strong>, <strong>.txt</strong>, or
-    <strong>.md</strong> file onto this window.
+    No books yet. Click <strong>+ Add book</strong> — or drag a
+    <strong>.epub</strong>, <strong>.txt</strong>, or <strong>.md</strong>
+    file onto this window.
   </p>
   <p class="hint">↓ / j / scroll — next line &nbsp;·&nbsp; ↑ / k — back &nbsp;·&nbsp; c — contents &nbsp;·&nbsp; Esc — library</p>
 </main>

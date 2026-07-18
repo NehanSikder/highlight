@@ -1,7 +1,7 @@
 /* Readwhile service worker — cache-first shell so the reader opens instantly
  * and works offline. Bump VERSION on any shell change. */
 
-const VERSION = "rw-v1";
+const VERSION = "rw-v2";
 const SHELL = [
   ".",
   "index.html",

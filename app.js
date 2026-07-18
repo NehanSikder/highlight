@@ -521,17 +521,9 @@ document.addEventListener("dragleave", () => {
 
 document.addEventListener("dragover", (e) => e.preventDefault());
 
-document.addEventListener("drop", async (e) => {
-  e.preventDefault();
-  dragDepth = 0;
-  $("drop-veil").hidden = true;
-  const files = e.dataTransfer?.files ?? [];
-  if (!files.length) {
-    // Dragging out of an app's library (Books, Calibre, mail) often delivers
-    // no real file — only Finder drags reliably do.
-    status("No file received — drag the book file from Finder, not from another app.");
-    return;
-  }
+/* Shared import path for both the file picker and drag-drop. */
+async function addFiles(files) {
+  if (!files.length) return;
   let added = 0;
   for (const file of files) {
     try {
@@ -544,6 +536,28 @@ document.addEventListener("drop", async (e) => {
     }
   }
   if (added && !state.book) showLibrary();
+}
+
+document.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  dragDepth = 0;
+  $("drop-veil").hidden = true;
+  const files = e.dataTransfer?.files ?? [];
+  if (!files.length) {
+    // Dragging out of an app's library (Books, Calibre, mail) often delivers
+    // no real file — only Finder drags reliably do.
+    status("No file received — use “+ Add book”, or drag the file from Finder.");
+    return;
+  }
+  await addFiles(files);
+});
+
+// ---------- add-book button (file picker) ----------
+
+$("add-btn").addEventListener("click", () => $("file-input").click());
+$("file-input").addEventListener("change", async (e) => {
+  await addFiles(e.target.files ?? []);
+  e.target.value = ""; // let the same file be re-picked later
 });
 
 // ---------- boot ----------
