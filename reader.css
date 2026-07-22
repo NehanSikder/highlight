@@ -230,6 +230,13 @@ html, body {
 }
 
 .line.current {
+  /* Lines are pre-wrapped and `white-space: pre`, so a line wider than the
+   * measure overflows to the right (see .line). Size the band to the text so
+   * the highlight covers those trailing words; min-width keeps short lines at
+   * the full measure width, unchanged. */
+  width: max-content;
+  min-width: 100%;
+  padding-right: 0.4rem;
   background: var(--current-bg);
   border-radius: 4px;
 }
